@@ -1,503 +1,521 @@
-const ERPModularApp = () => {
-  const [currentModule, setCurrentModule] = useState('customer');
-  const [allData, setAllData] = useState({});
-  const [searchTerm, setSearchTerm] = useState('');
-  const [editingItem, setEditingItem] = useState(null);
-  const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({});
-  const [showDetails, setShowDetails] = useState(null);
+import React, { useState, useMemo } from 'react';
+import { 
+  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, 
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  AreaChart, Area, ScatterChart, Scatter
+} from 'recharts';
+import { ChevronDown, Menu, X, TrendingUp, DollarSign, Users, Package, CheckCircle, AlertCircle } from 'lucide-react';
 
-  // Module Configuration
-  const modules = {
-    customer: {
-      label: '👥 ลูกค้า',
-      color: 'blue',
-      fields: {
-        code: { label: 'รหัส', type: 'text', required: true },
-        name: { label: 'ชื่อลูกค้า', type: 'text', required: true },
-        phone: { label: 'โทรศัพท์', type: 'tel' },
-        email: { label: 'อีเมล', type: 'email' },
-        creditterm: { label: 'เงื่อนไขเครดิต', type: 'text' },
-        address: { label: 'ที่อยู่', type: 'textarea' },
-        status: { label: 'สถานะ', type: 'select', options: ['Active', 'Inactive'] }
-      }
-    },
-    product: {
-      label: '📦 สินค้า',
-      color: 'green',
-      fields: {
-        sku: { label: 'SKU', type: 'text', required: true },
-        name: { label: 'ชื่อสินค้า', type: 'text', required: true },
-        category: { label: 'หมวดหมู่', type: 'text' },
-        cost: { label: 'ต้นทุน', type: 'number' },
-        price: { label: 'ราคาขาย', type: 'number' },
-        minstock: { label: 'สต็อกขั้นต่ำ', type: 'number' },
-        status: { label: 'สถานะ', type: 'select', options: ['Active', 'Inactive'] }
-      }
-    },
-    quotation: {
-      label: '📋 ใบเสนอราคา',
-      color: 'purple',
-      fields: {
-        quotationNo: { label: 'เลขที่ใบเสนอ', type: 'text', required: true },
-        date: { label: 'วันที่', type: 'date' },
-        customerCode: { label: 'รหัสลูกค้า', type: 'text' },
-        amount: { label: 'ยอดก่อนภาษี', type: 'number' },
-        vat: { label: 'ภาษีมูลค่าเพิ่ม (7%)', type: 'number' },
-        total: { label: 'รวมสุทธิ', type: 'number' },
-        status: { label: 'สถานะ', type: 'select', options: ['Draft', 'Sent', 'Approved', 'Rejected'] }
-      }
-    },
-    salesorder: {
-      label: '🛒 ใบสั่งซื้อ',
-      color: 'yellow',
-      fields: {
-        orderNo: { label: 'เลขที่ใบสั่ง', type: 'text', required: true },
-        quotationNo: { label: 'เลขที่ใบเสนอราคา', type: 'text' },
-        customerCode: { label: 'รหัสลูกค้า', type: 'text' },
-        orderDate: { label: 'วันที่สั่ง', type: 'date' },
-        deliveryDate: { label: 'วันที่ส่ง', type: 'date' },
-        total: { label: 'รวมทั้งสิ้น', type: 'number' },
-        status: { label: 'สถานะ', type: 'select', options: ['Draft', 'Approved', 'In Progress', 'Completed', 'Cancelled'] }
-      }
-    },
-    delivery: {
-      label: '📦 ใบส่งของ',
-      color: 'indigo',
-      fields: {
-        doNo: { label: 'เลขที่ใบส่ง', type: 'text', required: true },
-        orderNo: { label: 'เลขที่ใบสั่ง', type: 'text' },
-        date: { label: 'วันที่ส่ง', type: 'date' },
-        deliveredBy: { label: 'ผู้ส่ง', type: 'text' },
-        receivedBy: { label: 'ผู้รับ', type: 'text' },
-        status: { label: 'สถานะ', type: 'select', options: ['Pending', 'In Transit', 'Delivered', 'Returned'] }
-      }
-    },
-    invoice: {
-      label: '💰 ใบแจ้งหนี้',
-      color: 'red',
-      fields: {
-        invoiceNo: { label: 'เลขที่ใบแจ้งหนี้', type: 'text', required: true },
-        doNo: { label: 'เลขที่ใบส่ง', type: 'text' },
-        customerCode: { label: 'รหัสลูกค้า', type: 'text' },
-        date: { label: 'วันที่', type: 'date' },
-        dueDate: { label: 'วันที่ครบกำหนด', type: 'date' },
-        amount: { label: 'ยอดรวม', type: 'number' },
-        vat: { label: 'ภาษี', type: 'number' },
-        total: { label: 'รวมสุทธิ', type: 'number' },
-        status: { label: 'สถานะ', type: 'select', options: ['Paid', 'Unpaid', 'Partial', 'Overdue'] }
-      }
-    },
-    stockin: {
-      label: '📥 รับสินค้า',
-      color: 'emerald',
-      fields: {
-        id: { label: 'รหัส', type: 'text', required: true },
-        productCode: { label: 'รหัสสินค้า', type: 'text' },
-        reference: { label: 'เลขอ้างอิง', type: 'text' },
-        qty: { label: 'จำนวน', type: 'number' },
-        cost: { label: 'ต้นทุน', type: 'number' },
-        date: { label: 'วันที่', type: 'date' }
-      }
-    },
-    workorder: {
-      label: '🔧 ใบสั่งงาน',
-      color: 'orange',
-      fields: {
-        woNo: { label: 'เลขที่ใบสั่ง', type: 'text', required: true },
-        orderNo: { label: 'เลขที่ใบสั่งซื้อ', type: 'text' },
-        customerCode: { label: 'รหัสลูกค้า', type: 'text' },
-        jobType: { label: 'ประเภทงาน', type: 'select', options: ['Installation', 'Maintenance', 'Repair', 'Testing', 'Inspection'] },
-        assignedTo: { label: 'มอบหมายให้', type: 'text' },
-        startDate: { label: 'วันเริ่มงาน', type: 'date' },
-        endDate: { label: 'วันสิ้นสุด', type: 'date' },
-        status: { label: 'สถานะ', type: 'select', options: ['Open', 'In Progress', 'Pending', 'Completed', 'Cancelled'] }
-      }
-    },
-    employee: {
-      label: '👨‍💼 พนักงาน',
-      color: 'cyan',
-      fields: {
-        code: { label: 'รหัสพนักงาน', type: 'text', required: true },
-        firstName: { label: 'ชื่อ', type: 'text', required: true },
-        lastName: { label: 'นามสกุล', type: 'text' },
-        position: { label: 'ตำแหน่ง', type: 'text' },
-        department: { label: 'แผนก', type: 'text' },
-        phone: { label: 'โทรศัพท์', type: 'tel' },
-        email: { label: 'อีเมล', type: 'email' },
-        status: { label: 'สถานะ', type: 'select', options: ['Active', 'Probation', 'Resigned', 'Retired'] }
-      }
-    },
-    supplier: {
-      label: '🏭 ผู้จัดจำหน่าย',
-      color: 'pink',
-      fields: {
-        code: { label: 'รหัส', type: 'text', required: true },
-        name: { label: 'ชื่อผู้จัดจำหน่าย', type: 'text', required: true },
-        contact: { label: 'ชื่อติดต่อ', type: 'text' },
-        phone: { label: 'โทรศัพท์', type: 'tel' },
-        email: { label: 'อีเมล', type: 'email' },
-        address: { label: 'ที่อยู่', type: 'textarea' },
-        status: { label: 'สถานะ', type: 'select', options: ['Active', 'Inactive'] }
-      }
-    }
+const ERPDashboard = () => {
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [activeModule, setActiveModule] = useState('dashboard');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterDept, setFilterDept] = useState('all');
+  const [filterDateRange, setFilterDateRange] = useState('month');
+
+  // ข้อมูล ERP
+  const erpData = {
+    sales: [
+      { month: 'Jan', revenue: 483000, orders: 12, quotations: 8 },
+      { month: 'Feb', revenue: 562000, orders: 15, quotations: 11 },
+      { month: 'Mar', revenue: 748000, orders: 18, quotations: 14 },
+      { month: 'Apr', revenue: 645000, orders: 16, quotations: 12 },
+      { month: 'May', revenue: 821000, orders: 20, quotations: 16 },
+      { month: 'Jun', revenue: 923000, orders: 22, quotations: 18 },
+    ],
+    departments: [
+      { name: 'Administration', employees: 3, budget: 450000 },
+      { name: 'Operations', employees: 5, budget: 650000 },
+      { name: 'Warehouse', employees: 4, budget: 520000 },
+      { name: 'Procurement', employees: 3, budget: 380000 },
+      { name: 'Production', employees: 12, budget: 1200000 },
+      { name: 'Quality Control', employees: 3, budget: 320000 },
+      { name: 'Maintenance', employees: 2, budget: 280000 },
+    ],
+    productCategory: [
+      { name: 'IT Products', value: 45, revenue: 285000 },
+      { name: 'Camera Systems', value: 32, revenue: 189000 },
+      { name: 'PPE & Safety', value: 18, revenue: 95000 },
+      { name: 'Electrical Materials', value: 5, revenue: 24000 },
+    ],
+    skillComparison: [
+      { skill: 'Technical', AM: 85, HoD: 90, Supervisor: 78, Staff: 65 },
+      { skill: 'Leadership', AM: 92, HoD: 88, Supervisor: 82, Staff: 58 },
+      { skill: 'Communication', AM: 88, HoD: 85, Supervisor: 80, Staff: 72 },
+      { skill: 'Problem Solving', AM: 90, HoD: 92, Supervisor: 85, Staff: 70 },
+      { skill: 'Reliability', AM: 95, HoD: 90, Supervisor: 88, Staff: 82 },
+    ],
+    invoiceStatus: [
+      { status: 'Paid', count: 45, amount: 1850000 },
+      { status: 'Unpaid', count: 18, amount: 745000 },
+      { status: 'Partial', count: 12, amount: 425000 },
+      { status: 'Overdue', count: 8, amount: 320000 },
+    ],
+    workOrderTrend: [
+      { week: 'W1', completed: 8, pending: 3, inProgress: 5 },
+      { week: 'W2', completed: 12, pending: 2, inProgress: 4 },
+      { week: 'W3', completed: 10, pending: 4, inProgress: 6 },
+      { week: 'W4', completed: 15, pending: 2, inProgress: 3 },
+      { week: 'W5', completed: 9, pending: 5, inProgress: 7 },
+      { week: 'W6', completed: 14, pending: 1, inProgress: 2 },
+    ],
+    performance: [
+      { dept: 'Admin', efficiency: 88, quality: 92, delivery: 95 },
+      { dept: 'Ops', efficiency: 85, quality: 88, delivery: 90 },
+      { dept: 'Warehouse', efficiency: 92, quality: 87, delivery: 88 },
+      { dept: 'Procurement', efficiency: 90, quality: 93, delivery: 85 },
+      { dept: 'Production', efficiency: 87, quality: 85, delivery: 92 },
+    ],
+    stockLevels: [
+      { product: 'Notebook ASUS', inStock: 15, minStock: 5, reorderQty: 25 },
+      { product: 'IP Camera', inStock: 28, minStock: 15, reorderQty: 40 },
+      { product: 'Router Switch', inStock: 8, minStock: 5, reorderQty: 20 },
+      { product: 'Access Point', inStock: 12, minStock: 4, reorderQty: 15 },
+      { product: 'Safety Helmet', inStock: 45, minStock: 30, reorderQty: 60 },
+    ],
   };
 
-  // Initialize data from localStorage
-  useEffect(() => {
-    const savedData = localStorage.getItem('erpData');
-    if (savedData) {
-      setAllData(JSON.parse(savedData));
-    } else {
-      // Default data
-      const defaultData = {
-        customer: [
-          { id: 1, code: 'CST001', name: 'บริษัท อมตะอุตสาหกรรม', phone: '038-999888', email: 'contact@amata.com', creditterm: '30 Days', address: 'ชลบุรี', status: 'Active' },
-          { id: 2, code: 'CST002', name: 'บจก. ไทยรุ่งเรือง', phone: '02-3334444', email: 'info@thairung.com', creditterm: '45 Days', address: 'กรุงเทพ', status: 'Active' }
-        ],
-        product: [
-          { id: 1, sku: 'IT-NB-001', name: 'Notebook ASUS ExpertBook', category: 'IT', cost: 18500, price: 24900, minstock: 5, status: 'Active' },
-          { id: 2, sku: 'CAM-IP-01', name: 'IP Camera Hikvision 4MP', category: 'Camera', cost: 1200, price: 1890, minstock: 15, status: 'Active' }
-        ],
-        quotation: [],
-        salesorder: [],
-        delivery: [],
-        invoice: [],
-        stockin: [],
-        workorder: [],
-        employee: [
-          { id: 1, code: 'EMP001', firstName: 'สิทธิชัย', lastName: 'แสงจู', position: 'เจ้าของ', department: 'Administration', phone: '081-000000', email: 'owner@company.com', status: 'Active' },
-          { id: 2, code: 'EMP002', firstName: 'ณัฐพงษ์', lastName: 'กิจการ', position: 'Manager', department: 'Sales', phone: '081-111111', email: 'manager@company.com', status: 'Active' }
-        ],
-        supplier: []
-      };
-      setAllData(defaultData);
-      localStorage.setItem('erpData', JSON.stringify(defaultData));
-    }
+  // KPI Cards Data
+  const kpiData = useMemo(() => {
+    return {
+      totalRevenue: 4182000,
+      totalOrders: 103,
+      totalEmployees: 30,
+      totalProducts: 14,
+      totalCustomers: 5,
+      totalInvoices: 83,
+      paidInvoices: 45,
+      unpaidAmount: 1490000,
+      completedWorkOrders: 68,
+      pendingWorkOrders: 17,
+      avgOrderValue: 40601,
+      conversionRate: 62.5,
+    };
   }, []);
 
-  // Save to localStorage
-  const saveData = (newData) => {
-    setAllData(newData);
-    localStorage.setItem('erpData', JSON.stringify(newData));
-  };
-
-  // Filter data
-  const getFilteredData = () => {
-    const data = allData[currentModule] || [];
-    if (!searchTerm) return data;
-    return data.filter(item =>
-      Object.values(item).some(val =>
-        String(val).toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    );
-  };
-
-  // Add/Edit item
-  const handleSaveItem = () => {
-    const module = modules[currentModule];
-    const requiredFields = Object.keys(module.fields).filter(k => module.fields[k].required);
-    
-    // Validate required fields
-    if (!requiredFields.every(field => formData[field])) {
-      alert('กรุณากรอกข้อมูลที่จำเป็น');
-      return;
-    }
-
-    let newData = { ...allData };
-    
-    if (editingItem !== null) {
-      // Edit
-      newData[currentModule] = newData[currentModule].map((item, idx) =>
-        idx === editingItem ? { ...item, ...formData } : item
+  // Custom Tooltip Components
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-gray-900 text-white p-3 rounded-lg shadow-lg border border-yellow-400">
+          <p className="font-semibold">{label}</p>
+          {payload.map((entry, index) => (
+            <p key={index} style={{ color: entry.color }}>
+              {entry.name}: {typeof entry.value === 'number' ? entry.value.toLocaleString() : entry.value}
+            </p>
+          ))}
+        </div>
       );
-    } else {
-      // Add
-      const newItem = {
-        id: (newData[currentModule] || []).length + 1,
-        ...formData
-      };
-      newData[currentModule] = [...(newData[currentModule] || []), newItem];
     }
-    
-    saveData(newData);
-    resetForm();
+    return null;
   };
 
-  // Delete item
-  const handleDeleteItem = (index) => {
-    if (window.confirm('ต้องการลบรายการนี้หรือไม่?')) {
-      const newData = { ...allData };
-      newData[currentModule] = newData[currentModule].filter((_, idx) => idx !== index);
-      saveData(newData);
-    }
+  const colors = {
+    primary: '#a855f7',
+    secondary: '#fbbf24',
+    tertiary: '#7c3aed',
+    accent1: '#ec4899',
+    accent2: '#06b6d4',
+    neutral: '#6b7280',
   };
 
-  // Edit item
-  const handleEditItem = (index, item) => {
-    setEditingItem(index);
-    setFormData(item);
-    setShowForm(true);
-  };
+  const COLORS = ['#a855f7', '#fbbf24', '#06b6d4', '#f97316', '#ec4899', '#10b981'];
 
-  // Reset form
-  const resetForm = () => {
-    setFormData({});
-    setEditingItem(null);
-    setShowForm(false);
-  };
+  // Dashboard View
+  const renderDashboard = () => (
+    <div className="space-y-6">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { icon: DollarSign, label: 'รวมยอดขาย', value: `฿${(kpiData.totalRevenue / 1000000).toFixed(2)}M`, color: 'from-purple-500 to-purple-600', trend: '+12.5%' },
+          { icon: Package, label: 'ใบสั่งซื้อ', value: kpiData.totalOrders, color: 'from-yellow-500 to-yellow-600', trend: '+8.2%' },
+          { icon: Users, label: 'พนักงาน', value: kpiData.totalEmployees, color: 'from-cyan-500 to-cyan-600', trend: '+2' },
+          { icon: TrendingUp, label: 'อัตราการขาย', value: `${kpiData.conversionRate}%`, color: 'from-pink-500 to-pink-600', trend: '+3.5%' },
+        ].map((kpi, idx) => (
+          <div key={idx} className={`bg-gradient-to-br ${kpi.color} rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105`}>
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-gray-100 text-sm font-medium mb-2">{kpi.label}</p>
+                <p className="text-3xl font-bold">{kpi.value}</p>
+                <p className="text-xs text-green-100 mt-2">{kpi.trend} จากเดือนที่แล้ว</p>
+              </div>
+              <kpi.icon className="w-8 h-8 opacity-80" />
+            </div>
+          </div>
+        ))}
+      </div>
 
-  // Export CSV
-  const handleExportCSV = () => {
-    const data = getFilteredData();
-    if (data.length === 0) {
-      alert('ไม่มีข้อมูลที่จะส่งออก');
-      return;
-    }
+      {/* Charts Row 1 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Sales Revenue Trend */}
+        <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-purple-500">
+          <h3 className="text-lg font-bold text-gray-800 mb-4">📊 แนวโน้มยอดขาย</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={erpData.sales}>
+              <defs>
+                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={colors.primary} stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor={colors.primary} stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis dataKey="month" stroke={colors.neutral} />
+              <YAxis stroke={colors.neutral} />
+              <Tooltip content={<CustomTooltip />} />
+              <Area type="monotone" dataKey="revenue" stroke={colors.primary} fillOpacity={1} fill="url(#colorRevenue)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
 
-    const module = modules[currentModule];
-    const headers = Object.keys(module.fields);
-    const csv = [
-      headers.join(','),
-      ...data.map(item =>
-        headers.map(h => `"${String(item[h] || '').replace(/"/g, '""')}"`).join(',')
-      )
-    ].join('\n');
-
-    const link = document.createElement('a');
-    link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-    link.download = `${currentModule}_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-  };
-
-  const filteredData = getFilteredData();
-  const moduleConfig = modules[currentModule];
-  const colorClasses = {
-    blue: 'border-blue-500 bg-blue-50',
-    green: 'border-green-500 bg-green-50',
-    purple: 'border-purple-500 bg-purple-50',
-    yellow: 'border-yellow-500 bg-yellow-50',
-    indigo: 'border-indigo-500 bg-indigo-50',
-    red: 'border-red-500 bg-red-50',
-    emerald: 'border-emerald-500 bg-emerald-50',
-    orange: 'border-orange-500 bg-orange-50',
-    cyan: 'border-cyan-500 bg-cyan-50',
-    pink: 'border-pink-500 bg-pink-50'
-  };
-
-  const textColorClasses = {
-    blue: 'text-blue-700',
-    green: 'text-green-700',
-    purple: 'text-purple-700',
-    yellow: 'text-yellow-700',
-    indigo: 'text-indigo-700',
-    red: 'text-red-700',
-    emerald: 'text-emerald-700',
-    orange: 'text-orange-700',
-    cyan: 'text-cyan-700',
-    pink: 'text-pink-700'
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-6 shadow-lg">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-4xl font-bold mb-2">🏢 ERP Modular System</h1>
-          <p className="text-purple-100">PK Plus - ระบบจัดการองค์กรแบบครบวงจร</p>
+        {/* Work Order Status */}
+        <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-yellow-500">
+          <h3 className="text-lg font-bold text-gray-800 mb-4">🔧 สถานะใบสั่งงาน</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={erpData.workOrderTrend}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis dataKey="week" stroke={colors.neutral} />
+              <YAxis stroke={colors.neutral} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend />
+              <Bar dataKey="completed" fill="#10b981" name="เสร็จสิ้น" />
+              <Bar dataKey="inProgress" fill={colors.primary} name="กำลังดำเนิน" />
+              <Bar dataKey="pending" fill="#f97316" name="รอดำเนิน" />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Navigation */}
-      <div className="bg-white shadow-md sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex flex-wrap gap-2 overflow-x-auto pb-2">
-            {Object.entries(modules).map(([key, module]) => (
-              <button
-                key={key}
-                onClick={() => {
-                  setCurrentModule(key);
-                  setSearchTerm('');
-                  setShowForm(false);
-                }}
-                className={`px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition ${
-                  currentModule === key
-                    ? 'bg-purple-600 text-white shadow-lg'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
+      {/* Charts Row 2 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Product Category */}
+        <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-cyan-500">
+          <h3 className="text-lg font-bold text-gray-800 mb-4">📦 ประเภทสินค้า</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <PieChart>
+              <Pie
+                data={erpData.productCategory}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={100}
+                paddingAngle={5}
+                dataKey="value"
               >
-                {module.label}
-              </button>
+                {erpData.productCategory.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip content={<CustomTooltip />} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="mt-4 space-y-2">
+            {erpData.productCategory.map((item, idx) => (
+              <div key={idx} className="flex justify-between items-center text-sm">
+                <span className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx] }}></span>
+                  {item.name}
+                </span>
+                <span className="font-semibold text-gray-700">{item.value}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Invoice Status */}
+        <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-pink-500">
+          <h3 className="text-lg font-bold text-gray-800 mb-4">💰 สถานะใบแจ้งหนี้</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <PieChart>
+              <Pie
+                data={erpData.invoiceStatus}
+                cx="50%"
+                cy="50%"
+                outerRadius={100}
+                dataKey="count"
+                label
+              >
+                {erpData.invoiceStatus.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip content={<CustomTooltip />} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="mt-4 space-y-2">
+            {erpData.invoiceStatus.map((item, idx) => (
+              <div key={idx} className="flex justify-between items-center text-sm">
+                <span className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx] }}></span>
+                  {item.status} ({item.count})
+                </span>
+                <span className="font-semibold text-gray-700">฿{(item.amount / 1000).toFixed(0)}K</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Department Performance */}
+        <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-green-500">
+          <h3 className="text-lg font-bold text-gray-800 mb-4">👥 ประสิทธิภาพแผนก</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <RadarChart data={erpData.performance}>
+              <PolarGrid stroke="#e5e7eb" />
+              <PolarAngleAxis dataKey="dept" tick={{ fontSize: 11 }} />
+              <PolarRadiusAxis angle={90} domain={[0, 100]} />
+              <Radar name="ประสิทธิภาพ" dataKey="efficiency" stroke={colors.primary} fill={colors.primary} fillOpacity={0.6} />
+              <Radar name="คุณภาพ" dataKey="quality" stroke={colors.secondary} fill={colors.secondary} fillOpacity={0.3} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend />
+            </RadarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Charts Row 3 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Department Employee Distribution */}
+        <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-indigo-500">
+          <h3 className="text-lg font-bold text-gray-800 mb-4">👔 จำนวนพนักงานแต่ละแผนก</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={erpData.departments} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis type="number" stroke={colors.neutral} />
+              <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} stroke={colors.neutral} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="employees" fill={colors.primary} name="พนักงาน" radius={[0, 8, 8, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Stock Levels Comparison */}
+        <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-orange-500">
+          <h3 className="text-lg font-bold text-gray-800 mb-4">📈 ระดับสินค้าคงเหลือ</h3>
+          <div className="overflow-y-auto max-h-80 space-y-3">
+            {erpData.stockLevels.map((item, idx) => (
+              <div key={idx} className="bg-gradient-to-r from-gray-50 to-white p-3 rounded-lg border border-gray-200">
+                <div className="flex justify-between items-start mb-2">
+                  <p className="font-semibold text-gray-700 text-sm">{item.product}</p>
+                  <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
+                    item.inStock > item.minStock * 1.5 ? 'bg-green-100 text-green-700' :
+                    item.inStock > item.minStock ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-red-100 text-red-700'
+                  }`}>
+                    {item.inStock > item.minStock * 1.5 ? '✓ Normal' : item.inStock > item.minStock ? '⚠ Low' : '🔴 Critical'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <p className="text-gray-500">สต็อก</p>
+                    <p className="font-bold text-gray-800">{item.inStock}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">ขั้นต่ำ</p>
+                    <p className="font-bold text-gray-800">{item.minStock}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">สั่งซื้อ</p>
+                    <p className="font-bold text-gray-800">{item.reorderQty}</p>
+                  </div>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                  <div
+                    className={`h-2 rounded-full ${item.inStock > item.minStock * 1.5 ? 'bg-green-500' : item.inStock > item.minStock ? 'bg-yellow-500' : 'bg-red-500'}`}
+                    style={{ width: `${Math.min((item.inStock / item.reorderQty) * 100, 100)}%` }}
+                  ></div>
+                </div>
+              </div>
             ))}
           </div>
         </div>
       </div>
 
+      {/* Summary Statistics */}
+      <div className="bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 rounded-xl shadow-lg p-6 text-white">
+        <h3 className="text-lg font-bold mb-4">📋 สรุปข้อมูลสำคัญ</h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-black bg-opacity-20 rounded-lg p-4">
+            <p className="text-sm opacity-90">ค่าใบสั่งซื้อเฉลี่ย</p>
+            <p className="text-2xl font-bold">฿{kpiData.avgOrderValue.toLocaleString()}</p>
+          </div>
+          <div className="bg-black bg-opacity-20 rounded-lg p-4">
+            <p className="text-sm opacity-90">ลูกค้าทั้งหมด</p>
+            <p className="text-2xl font-bold">{kpiData.totalCustomers}</p>
+          </div>
+          <div className="bg-black bg-opacity-20 rounded-lg p-4">
+            <p className="text-sm opacity-90">ใบแจ้งหนี้ที่ค้างชำระ</p>
+            <p className="text-2xl font-bold">฿{(kpiData.unpaidAmount / 1000000).toFixed(2)}M</p>
+          </div>
+          <div className="bg-black bg-opacity-20 rounded-lg p-4">
+            <p className="text-sm opacity-90">ใบสั่งงานเสร็จสิ้น</p>
+            <p className="text-2xl font-bold">{kpiData.completedWorkOrders}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Analytics View
+  const renderAnalytics = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Monthly Revenue Comparison */}
+        <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-purple-500">
+          <h3 className="text-lg font-bold text-gray-800 mb-4">📈 เปรียบเทียบข้อมูลรายเดือน</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={erpData.sales}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis dataKey="month" stroke={colors.neutral} />
+              <YAxis stroke={colors.neutral} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend />
+              <Line type="monotone" dataKey="revenue" stroke={colors.primary} strokeWidth={3} name="ยอดขาย" />
+              <Line type="monotone" dataKey="orders" stroke={colors.secondary} strokeWidth={3} name="ใบสั่ง" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Department Budget */}
+        <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-yellow-500">
+          <h3 className="text-lg font-bold text-gray-800 mb-4">💼 งบประมาณแผนก</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={erpData.departments}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} tick={{ fontSize: 11 }} stroke={colors.neutral} />
+              <YAxis stroke={colors.neutral} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="budget" fill={colors.secondary} name="งบประมาณ" radius={[8, 8, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Reports View
+  const renderReports = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-6">
+        <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-cyan-500">
+          <h3 className="text-lg font-bold text-gray-800 mb-6">📊 รายงานการปฏิบัติงาน</h3>
+          <div className="space-y-4">
+            {erpData.departments.map((dept, idx) => (
+              <div key={idx} className="bg-gradient-to-r from-gray-50 to-white p-4 rounded-lg border border-gray-200">
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="font-semibold text-gray-800">{dept.name}</h4>
+                  <span className="text-sm font-bold text-purple-600">{dept.employees} คน</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">งบประมาณทั้งปี</p>
+                    <p className="text-lg font-bold text-gray-800">฿{(dept.budget / 1000).toFixed(0)}K</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">งบเฉลี่ยต่อคน</p>
+                    <p className="text-lg font-bold text-purple-600">฿{(dept.budget / dept.employees).toFixed(0)}</p>
+                  </div>
+                </div>
+                <div className="mt-3 w-full bg-gray-200 rounded-full h-3">
+                  <div
+                    className="h-3 rounded-full bg-gradient-to-r from-purple-500 to-yellow-500"
+                    style={{ width: `${(dept.budget / 1500000) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex h-screen bg-gray-50">
+      {/* Sidebar */}
+      <div className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-gradient-to-b from-purple-700 via-purple-600 to-purple-700 text-white transition-all duration-300 overflow-y-auto`}>
+        <div className="p-4 flex items-center justify-between">
+          {sidebarOpen && <h1 className="text-xl font-bold">ERP Dashboard</h1>}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 hover:bg-purple-500 rounded-lg transition"
+          >
+            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+
+        <nav className="mt-8 space-y-2 px-3">
+          {[
+            { id: 'dashboard', label: '📊 Dashboard', icon: '📊' },
+            { id: 'analytics', label: '📈 Analytics', icon: '📈' },
+            { id: 'reports', label: '📋 Reports', icon: '📋' },
+          ].map(item => (
+            <button
+              key={item.id}
+              onClick={() => setActiveModule(item.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
+                activeModule === item.id
+                  ? 'bg-yellow-400 text-purple-700 font-semibold'
+                  : 'hover:bg-purple-500 text-white'
+              }`}
+            >
+              <span className="text-xl">{item.icon}</span>
+              {sidebarOpen && <span>{item.label}</span>}
+            </button>
+          ))}
+        </nav>
+
+        {sidebarOpen && (
+          <div className="mt-8 mx-3 p-4 bg-purple-500 rounded-lg">
+            <p className="text-sm text-purple-100">PK Plus Company</p>
+            <p className="text-xs text-purple-200 mt-2">ลุงชัย ไชโย พานิช</p>
+          </div>
+        )}
+      </div>
+
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto p-6">
-        {/* Card */}
-        <div className={`bg-white rounded-xl shadow-lg border-l-4 ${colorClasses[moduleConfig.color]}`}>
-          {/* Action Bar */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex flex-col md:flex-row gap-4 md:items-center">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-3 text-gray-400" size={20} />
-                <input
-                  type="text"
-                  placeholder="ค้นหา..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
-                />
-              </div>
-              <button
-                onClick={() => {
-                  setEditingItem(null);
-                  setFormData({});
-                  setShowForm(true);
-                }}
-                className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-semibold transition"
+      <div className="flex-1 overflow-auto">
+        <div className="bg-white shadow-sm p-6 border-b border-gray-200 sticky top-0 z-10">
+          <div className="flex justify-between items-center">
+            <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-yellow-500">
+              {activeModule === 'dashboard' && '📊 Dashboard'}
+              {activeModule === 'analytics' && '📈 Analytics'}
+              {activeModule === 'reports' && '📋 Reports'}
+            </h2>
+            
+            <div className="flex items-center gap-4">
+              <select
+                value={filterDateRange}
+                onChange={(e) => setFilterDateRange(e.target.value)}
+                className="px-4 py-2 border-2 border-purple-300 rounded-lg focus:border-purple-600 focus:outline-none"
               >
-                <Plus size={20} /> เพิ่มใหม่
-              </button>
-              <button
-                onClick={handleExportCSV}
-                className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold transition"
+                <option value="week">สัปดาห์นี้</option>
+                <option value="month">เดือนนี้</option>
+                <option value="quarter">ไตรมาส</option>
+                <option value="year">ปีนี้</option>
+              </select>
+
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="px-4 py-2 border-2 border-yellow-300 rounded-lg focus:border-yellow-600 focus:outline-none"
               >
-                <Download size={20} /> Export
-              </button>
+                <option value="all">สถานะทั้งหมด</option>
+                <option value="active">ทำงาน</option>
+                <option value="pending">รอดำเนิน</option>
+                <option value="completed">เสร็จสิ้น</option>
+              </select>
             </div>
           </div>
+        </div>
 
-          {/* Form Modal */}
-          {showForm && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-96 overflow-y-auto">
-                <div className="sticky top-0 bg-gradient-to-r from-purple-500 to-indigo-500 px-6 py-4 flex justify-between items-center text-white border-b">
-                  <h2 className="text-xl font-bold">
-                    {editingItem !== null ? '✏️ แก้ไข' : '➕ เพิ่มใหม่'} {moduleConfig.label}
-                  </h2>
-                  <button onClick={resetForm} className="p-1 hover:bg-white hover:bg-opacity-20 rounded transition">
-                    <X size={24} />
-                  </button>
-                </div>
-
-                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {Object.entries(moduleConfig.fields).map(([key, field]) => (
-                    <div key={key} className={field.type === 'textarea' ? 'md:col-span-2' : ''}>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        {field.label} {field.required && <span className="text-red-500">*</span>}
-                      </label>
-                      {field.type === 'textarea' ? (
-                        <textarea
-                          value={formData[key] || ''}
-                          onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
-                          rows="3"
-                          className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
-                        />
-                      ) : field.type === 'select' ? (
-                        <select
-                          value={formData[key] || ''}
-                          onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
-                          className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
-                        >
-                          <option value="">-- เลือก --</option>
-                          {field.options.map(opt => (
-                            <option key={opt} value={opt}>{opt}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          type={field.type}
-                          value={formData[key] || ''}
-                          onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
-                          className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="sticky bottom-0 bg-gray-100 px-6 py-4 flex justify-end gap-3 border-t">
-                  <button
-                    onClick={resetForm}
-                    className="px-6 py-2 bg-gray-400 hover:bg-gray-500 text-white rounded-lg font-semibold transition"
-                  >
-                    ยกเลิก
-                  </button>
-                  <button
-                    onClick={handleSaveItem}
-                    className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition"
-                  >
-                    {editingItem !== null ? '💾 บันทึกการแก้ไข' : '➕ เพิ่มใหม่'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Data Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-100 border-b-2 border-gray-300">
-                  {Object.entries(moduleConfig.fields).map(([key, field]) => (
-                    <th key={key} className="px-4 py-3 text-left font-bold text-gray-700">
-                      {field.label}
-                    </th>
-                  ))}
-                  <th className="px-4 py-3 text-center font-bold text-gray-700">การดำเนิน</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredData.length > 0 ? (
-                  filteredData.map((item, idx) => (
-                    <tr key={idx} className="border-b hover:bg-gray-50 transition">
-                      {Object.keys(moduleConfig.fields).map(key => (
-                        <td key={key} className="px-4 py-3 text-gray-600">
-                          {typeof item[key] === 'number' && 
-                          (key.includes('price') || key.includes('cost') || key.includes('amount') || key.includes('total') || key.includes('vat'))
-                            ? `฿${item[key]?.toLocaleString()}`
-                            : String(item[key] || '-')}
-                        </td>
-                      ))}
-                      <td className="px-4 py-3 flex gap-2 justify-center">
-                        <button
-                          onClick={() => handleEditItem(idx, item)}
-                          className="p-2 text-blue-600 hover:bg-blue-100 rounded transition"
-                          title="แก้ไข"
-                        >
-                          <Edit2 size={18} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteItem(idx)}
-                          className="p-2 text-red-600 hover:bg-red-100 rounded transition"
-                          title="ลบ"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={Object.keys(moduleConfig.fields).length + 1} className="px-4 py-8 text-center text-gray-400">
-                      ไม่มีข้อมูล {moduleConfig.label}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Record Count */}
-          <div className="px-6 py-4 bg-gray-50 border-t text-sm text-gray-600 font-semibold">
-            📊 แสดง <span className="text-purple-600">{filteredData.length}</span> / <span className="text-indigo-600">{allData[currentModule]?.length || 0}</span> รายการ
-          </div>
+        <div className="p-6">
+          {activeModule === 'dashboard' && renderDashboard()}
+          {activeModule === 'analytics' && renderAnalytics()}
+          {activeModule === 'reports' && renderReports()}
         </div>
       </div>
     </div>
   );
 };
 
-export default ERPModularApp;
+export default ERPDashboard;
