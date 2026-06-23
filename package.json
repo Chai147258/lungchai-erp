@@ -1,45 +1,22 @@
 {
-  "name": "pk-plus-erp-backend",
-  "version": "3.1.0",
-  "description": "PK Plus ERP V3 Production Backend - Node.js + Express + Supabase with Security Hardening",
-  "main": "server_production.js",
+  "name": "lungchai-erp-v3",
+  "version": "3.0.0",
+  "description": "ERP V3 Comprehensive System - ลุงชัย ไชโย พานิช",
+  "private": true,
+  "type": "module",
   "scripts": {
-    "start": "node server_production.js",
-    "dev": "nodemon server_production.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "echo 'Development mode - open public/index.html in browser'",
+    "build": "echo 'Static build - no build step needed'",
+    "start": "echo 'Use Vercel deployment'"
   },
   "keywords": [
     "erp",
-    "express",
-    "nodejs",
-    "supabase",
-    "postgresql",
-    "pk-plus",
-    "lungchai",
-    "security"
+    "erp-system",
+    "pos",
+    "inventory",
+    "sales",
+    "thailand"
   ],
-  "author": "PK Plus Development Team",
-  "license": "MIT",
-  "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "jsonwebtoken": "^9.1.2",
-    "bcryptjs": "^2.4.3",
-    "@supabase/supabase-js": "^2.38.4",
-    "xlsx": "^0.18.5",
-    "multer": "^1.4.5-lts.1",
-    "helmet": "^7.1.0",
-    "express-rate-limit": "^7.1.5",
-    "morgan": "^1.10.0",
-    "joi": "^17.11.0",
-    "uuid": "^9.0.1"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
-  },
-  "engines": {
-    "node": ">=14.0.0",
-    "npm": ">=6.0.0"
-  }
+  "author": "ลุงชัย ไชโย พานิช",
+  "license": "MIT"
 }
